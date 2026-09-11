@@ -1,0 +1,19 @@
+services:
+  payer-postgres:
+    image: postgres:16
+    container_name: payer-postgres
+    environment:
+      POSTGRES_DB: payer_db
+      POSTGRES_USER: payer
+      POSTGRES_PASSWORD: payer
+    ports:
+      - "5434:5432"
+    volumes:
+      - payer_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U payer -d payer_db" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+volumes:
+  payer_data:
