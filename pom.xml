@@ -12,7 +12,7 @@
     <name>prior-auth</name>
 
     <modules>
-        <module>payer</module>
+        <module>payer-service</module>
 <!--        <module>provider-service</module>-->
     </modules>
 
