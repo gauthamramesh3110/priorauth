@@ -65,6 +65,15 @@ def nullable(value: str | None) -> str | None:
     value = value.strip()
     return value or None
 
+def earliest_coverage_year() -> int:
+    """Network participation has no start date in the data, so one is derived.
+
+    Using the earliest coverage year means every organization is in or out of
+    network for the whole period any patient was covered, which is the only
+    honest answer available: Synthea records no contract dates.
+    """
+    rows = read_csv("payer_transitions.csv")
+    return min(int(r["START_YEAR"]) for r in rows)
 
 def read_csv(name: str) -> list[dict]:
     path = WORKING_SET / name
@@ -150,6 +159,59 @@ def map_coverage(rows):
         for r in rows
     ]
 
+def map_network_participation(rows):
+    # Synthea has no provider network concept. These rows are derived in pass 1
+    # from encounter behaviour: an organization is in-network if it appears on
+    # an encounter this payer covered, out-of-network if it treated the same
+    # patients only under other coverage.
+    org_ids = {r["Id"] for r in read_csv("organizations.csv")}
+    covered = {r["ORGANIZATION"] for r in rows}
+
+    if len(covered) != len(rows):
+        raise ValueError("an organization appears more than once")
+    if covered != org_ids:
+        missing = len(org_ids - covered)
+        extra = len(covered - org_ids)
+        raise ValueError(
+            f"network rows do not cover the working set: "
+            f"{missing} organizations missing, {extra} unknown"
+        )
+
+    in_network = {r["ORGANIZATION"] for r in rows if r["IN_NETWORK"] == "true"}
+    out_network = {r["ORGANIZATION"] for r in rows if r["IN_NETWORK"] == "false"}
+    if len(in_network) + len(out_network) != len(rows):
+        raise ValueError("IN_NETWORK must be exactly 'true' or 'false'")
+    if not in_network or not out_network:
+        raise ValueError("both buckets must be non-empty, or a rejection path is dead")
+
+    # The OUT_OF_NETWORK rejection is only reachable if a request can name a
+    # provider at an out-of-network organization. Assert it here rather than
+    # discovering it as an untestable path in PA-15.
+    providers = read_csv("providers.csv")
+    reachable = [p for p in providers if p["ORGANIZATION"] in out_network]
+    if not reachable:
+        raise ValueError(
+            "no provider belongs to an out-of-network organization, "
+            "so OUT_OF_NETWORK cannot be triggered by real seed data"
+        )
+
+    effective_from = f"{earliest_coverage_year()}-01-01"
+    print(
+        f"      {len(in_network)} in-network, {len(out_network)} out-of-network, "
+        f"{len(reachable)} providers reachable for OUT_OF_NETWORK, "
+        f"effective from {effective_from}"
+    )
+
+    return [
+        (
+            r["PAYER"],
+            r["ORGANIZATION"],
+            r["IN_NETWORK"] == "true",
+            effective_from,
+            None,  # effective_to: no contract end recorded
+        )
+        for r in rows
+    ]
 
 LOADERS = [
     (
@@ -188,10 +250,17 @@ LOADERS = [
         " VALUES (%s, %s, %s, %s, %s)",
         map_coverage,
     ),
+    (
+        "network_participation",
+        "network_participation.csv",
+        "INSERT INTO network_participation"
+        " (payer_id, organization_id, in_network, effective_from, effective_to)"
+        " VALUES (%s, %s, %s, %s, %s)",
+        map_network_participation,
+    ),
 ]
 
 # Loaded by later stories, listed so the gap is visible rather than forgotten:
-#   network_participation  <- network_participation.csv   (PA-07)
 #   patient_condition      <- conditions.csv              (PA-12)
 #   prior_auth_eligible_code, prior_auth_criteria         (PA-11)
 
