@@ -1,0 +1,5 @@
+# Seed job dependencies.
+#
+# filter_synthea.py uses only the standard library, on purpose: pass 1 should
+# run from a bare checkout with nothing installed. Only load.py needs a driver.
+psycopg[binary]>=3.2,<4

@@ -15,5 +15,14 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+  seed:
+    build:
+      context: ./seed-data
+    environment:
+      PAYER_DB_URL: postgresql://payer:payer@payer-postgres:5432/payer_db
+    depends_on:
+      payer-postgres:
+        condition: service_healthy
+    restart: "no"
 volumes:
   payer_data:
