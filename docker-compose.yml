@@ -18,6 +18,8 @@ services:
   seed:
     build:
       context: ./seed-data
+    volumes:
+      - ./seed-data/working-set:/seed/working-set:ro
     environment:
       PAYER_DB_URL: postgresql://payer:payer@payer-postgres:5432/payer_db
     depends_on:
