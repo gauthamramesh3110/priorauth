@@ -2,6 +2,7 @@ code,code_type,description,typical_cost
 CT,IMAGING,Computed tomography,1200.00
 US,IMAGING,Ultrasound,1200.00
 232717009,PROCEDURE,Coronary artery bypass grafting,63123.00
+180325003,PROCEDURE,Electrical cardioversion,52638.00
 415070008,PROCEDURE,Percutaneous coronary intervention,30590.00
 447365002,PROCEDURE,Insertion of biventricular implantable cardioverter defibrillator,40121.00
 433112001,PROCEDURE,Percutaneous mechanical thrombectomy of portal vein,35206.00
