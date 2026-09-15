@@ -315,6 +315,57 @@ def map_criteria(rows):
         for r in rows
     ]
 
+def map_patient_condition(rows):
+    # STOP is empty for anything unresolved, which is most rows. It has to
+    # become NULL: resolved_date IS NULL is what the rule engine reads as
+    # "still active", and an empty string is not a valid DATE anyway.
+    patients = {r["Id"] for r in read_csv("patients.csv")}
+
+    orphans = {r["PATIENT"] for r in rows} - patients
+    if orphans:
+        raise ValueError(f"{len(orphans)} conditions reference unknown patients")
+
+    backwards = [
+        r for r in rows
+        if r["STOP"] and r["START"] and r["STOP"] < r["START"]
+    ]
+    if backwards:
+        raise ValueError(
+            f"{len(backwards)} conditions resolve before they start, "
+            f"first is patient {backwards[0]['PATIENT']} code {backwards[0]['CODE']}"
+        )
+
+    # The criteria are worthless if the conditions they require are absent.
+    # PA-11 checked this against the CSV; this checks what is actually being
+    # inserted, which is the last chance before the rule engine depends on it.
+    present = {r["CODE"] for r in rows}
+    required = {
+        c["required_condition_code"]
+        for c in read_curated("criteria.csv")
+        if c["required_condition_code"]
+    }
+    missing = required - present
+    if missing:
+        raise ValueError(f"criteria require conditions absent from the data: {sorted(missing)}")
+
+    unresolved = sum(1 for r in rows if not r["STOP"])
+    print(
+        f"      {len(present)} distinct codes, {unresolved} unresolved, "
+        f"{len(required)} referenced by criteria"
+    )
+
+    return [
+        (
+            r["PATIENT"],
+            nullable(r["ENCOUNTER"]),
+            r["CODE"],
+            nullable(r["DESCRIPTION"]),
+            r["START"],
+            nullable(r["STOP"]),
+        )
+        for r in rows
+    ]
+
 LOADERS = [
     (
         "payer_ref",
@@ -384,12 +435,16 @@ LOADERS = [
         map_criteria,
         read_curated,
     ),
+    (
+        "patient_condition",
+        "conditions.csv",
+        "INSERT INTO patient_condition"
+        " (patient_id, encounter_id, code, description, onset_date, resolved_date)"
+        " VALUES (%s, %s, %s, %s, %s, %s)",
+        map_patient_condition,
+        read_csv,
+    ),
 ]
-
-# Loaded by later stories, listed so the gap is visible rather than forgotten:
-#   patient_condition      <- conditions.csv              (PA-12)
-#   prior_auth_eligible_code, prior_auth_criteria         (PA-11)
-
 
 def prepare() -> list[tuple[str, str, list[tuple]]]:
     """Read and map every loader's source, before touching the database."""
