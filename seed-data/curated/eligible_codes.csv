@@ -1,0 +1,20 @@
+code,code_type,description,typical_cost
+CT,IMAGING,Computed tomography,1200.00
+US,IMAGING,Ultrasound,1200.00
+232717009,PROCEDURE,Coronary artery bypass grafting,63123.00
+415070008,PROCEDURE,Percutaneous coronary intervention,30590.00
+447365002,PROCEDURE,Insertion of biventricular implantable cardioverter defibrillator,40121.00
+433112001,PROCEDURE,Percutaneous mechanical thrombectomy of portal vein,35206.00
+43075005,PROCEDURE,Partial resection of colon,43707.00
+703423002,PROCEDURE,Combined chemotherapy and radiation therapy,24283.00
+274031008,PROCEDURE,Rectal polypectomy,18671.00
+312681000,PROCEDURE,Bone density scan,18170.00
+73761001,PROCEDURE,Colonoscopy,23076.00
+180256009,PROCEDURE,Subcutaneous immunotherapy,24174.00
+1736776,MEDICATION,Oxaliplatin 5 MG/ML injection 10 ML,648090.00
+1803932,MEDICATION,Leucovorin 100 MG injection,9066.00
+313185,MEDICATION,Tacrine 10 MG oral capsule,28351.00
+1599803,MEDICATION,Donepezil hydrochloride 10 MG / memantine 24 HR,18164.00
+866414,MEDICATION,Metoprolol succinate 100 MG extended release 24 HR,18971.00
+1719286,MEDICATION,Furosemide 10 MG/ML injection 10 ML,17390.00
+2001499,MEDICATION,Vitamin B12 5 MG/ML injectable solution,179173.00
