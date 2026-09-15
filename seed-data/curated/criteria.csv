@@ -1,0 +1,20 @@
+code,code_type,criterion_description,required_condition_code,auto_approve_if_met,default_validity_days
+232717009,PROCEDURE,Approve when a documented myocardial infarction is on file. Revascularisation after infarction is standard of care and does not need a reviewer.,22298006,true,90
+415070008,PROCEDURE,Approve when a documented myocardial infarction is on file.,22298006,true,90
+447365002,PROCEDURE,Approve when cardiac arrest is documented. Device implantation for secondary prevention is supported.,410429000,true,180
+433112001,PROCEDURE,Approve when a documented stroke is on file.,230690007,true,60
+180325003,PROCEDURE,Approve when atrial fibrillation is documented. Cardioversion without a documented arrhythmia requires review.,49436004,true,60
+43075005,PROCEDURE,Approve when a malignant neoplasm of the colon is documented.,109838007,true,180
+703423002,PROCEDURE,Approve when non-small cell lung carcinoma is documented.,424132000,true,365
+274031008,PROCEDURE,Approve when a colonic polyp is documented.,68496003,true,90
+312681000,PROCEDURE,Approve when a malignant neoplasm of the breast is documented. Bone density monitoring during therapy is expected.,254837009,true,365
+73761001,PROCEDURE,Screening and diagnostic colonoscopy both present as the same code. A reviewer must confirm the indication before authorisation.,,false,90
+180256009,PROCEDURE,Immunotherapy courses run for years and are reviewed individually for continuation.,,false,365
+1736776,MEDICATION,Approve when a malignant tumour of the colon is documented.,363406005,true,180
+1803932,MEDICATION,Approve when a malignant tumour of the colon is documented. Given alongside oxaliplatin.,363406005,true,180
+313185,MEDICATION,Approve when Alzheimer's disease is documented.,26929004,true,365
+1599803,MEDICATION,Approve when Alzheimer's disease is documented.,26929004,true,365
+866414,MEDICATION,Approve when chronic congestive heart failure is documented.,88805009,true,365
+1719286,MEDICATION,Approve when chronic congestive heart failure is documented.,88805009,true,180
+2001499,MEDICATION,High aggregate spend with no single supporting diagnosis. Every request is reviewed.,,false,90
+CT,IMAGING,Computed tomography covers too many indications for a single rule. A reviewer confirms the body site and indication.,,false,30
