@@ -27,6 +27,14 @@ import os
 import sys
 from pathlib import Path
 
+CURATED = Path(__file__).parent / "curated"
+
+# Eligible codes deliberately left without a criterion, so the evaluator's
+# NO_CRITERION_DEFINED branch is reachable. Declared here rather than merely
+# tolerated: the loader asserts this set matches exactly, which catches both an
+# accidental omission and an accidental addition.
+CODES_WITHOUT_CRITERION = {("US", "IMAGING")}
+
 WORKING_SET = Path(__file__).parent / "working-set"
 
 DEFAULT_DB_URL = "postgresql://payer:payer@localhost:5434/payer_db"
@@ -46,6 +54,8 @@ TRUNCATE_TABLES = [
     "coverage",
     "patient_condition",
     "network_participation",
+    "prior_auth_criteria",
+    "prior_auth_eligible_code",
     "provider_ref",
     "organization_ref",
     "patient_ref",
@@ -82,6 +92,13 @@ def read_csv(name: str) -> list[dict]:
     with path.open(newline="", encoding="utf-8") as fh:
         return list(csv.DictReader(fh))
 
+def read_curated(name: str) -> list[dict]:
+    """Hand-authored configuration, which lives outside the generated working set."""
+    path = CURATED / name
+    if not path.exists():
+        sys.exit(f"Missing {path}. This file is written by hand, not generated.")
+    with path.open(newline="", encoding="utf-8") as fh:
+        return list(csv.DictReader(fh))
 
 # ---------------------------------------------------------------------------
 # Loaders
@@ -213,6 +230,91 @@ def map_network_participation(rows):
         for r in rows
     ]
 
+def map_eligible_code(rows):
+    keys = {(r["code"], r["code_type"]) for r in rows}
+    if len(keys) != len(rows):
+        raise ValueError("duplicate (code, code_type)")
+    if not {r["code_type"] for r in rows} <= {"PROCEDURE", "IMAGING", "MEDICATION"}:
+        raise ValueError("code_type must be PROCEDURE, IMAGING or MEDICATION")
+    return [
+        (r["code"], r["code_type"], r["description"], r["typical_cost"] or None)
+        for r in rows
+    ]
+
+
+def map_criteria(rows):
+    eligible = {
+        (r["code"], r["code_type"]) for r in read_curated("eligible_codes.csv")
+    }
+    keys = [(r["code"], r["code_type"]) for r in rows]
+
+    orphans = set(keys) - eligible
+    if orphans:
+        raise ValueError(f"criteria for codes not on the eligible list: {sorted(orphans)}")
+    if len(keys) != len(set(keys)):
+        raise ValueError("more than one criterion for the same code")
+
+    # The gap is the point, so it is asserted rather than allowed. A missing
+    # criterion added later by someone who has forgotten why US has none would
+    # silently kill the NO_CRITERION_DEFINED branch.
+    gap = eligible - set(keys)
+    if gap != CODES_WITHOUT_CRITERION:
+        raise ValueError(
+            f"codes without a criterion changed: expected "
+            f"{sorted(CODES_WITHOUT_CRITERION)}, found {sorted(gap)}"
+        )
+
+    flags = {r["auto_approve_if_met"] for r in rows}
+    if not flags <= {"true", "false"}:
+        raise ValueError("auto_approve_if_met must be exactly 'true' or 'false'")
+
+    auto = [r for r in rows if r["auto_approve_if_met"] == "true"]
+    always = [r for r in rows if r["auto_approve_if_met"] == "false"]
+    if not auto:
+        raise ValueError("no auto-approve criteria, so AUTO_APPROVE is unreachable")
+    if not always:
+        raise ValueError("no always-review criteria, so ALWAYS_PHYSICIAN_REVIEW is unreachable")
+
+    bad = [r["code"] for r in always if r["required_condition_code"]]
+    if bad:
+        raise ValueError(f"always-review criteria must have no condition: {bad}")
+
+    # patient_condition is empty until PA-12, so this validates against the
+    # working set rather than the database.
+    patients_with = {}
+    for c in read_csv("conditions.csv"):
+        patients_with.setdefault(c["CODE"], set()).add(c["PATIENT"])
+
+    for r in auto:
+        code = r["required_condition_code"]
+        if not code:
+            raise ValueError(f"{r['code']}: auto-approve with no required condition")
+        holders = patients_with.get(code)
+        if not holders:
+            raise ValueError(
+                f"{r['code']}: required condition {code} is on no patient, "
+                "so AUTO_APPROVE is unreachable for it"
+            )
+        if len(holders) < 3:
+            print(f"      warning: {r['code']} condition {code} on only {len(holders)} patients")
+
+    print(
+        f"      {len(auto)} auto-approve, {len(always)} always-review, "
+        f"{len(gap)} with no criterion"
+    )
+
+    return [
+        (
+            r["code"],
+            r["code_type"],
+            r["criterion_description"],
+            nullable(r["required_condition_code"]),
+            r["auto_approve_if_met"] == "true",
+            int(r["default_validity_days"]),
+        )
+        for r in rows
+    ]
+
 LOADERS = [
     (
         "payer_ref",
@@ -220,6 +322,7 @@ LOADERS = [
         "INSERT INTO payer_ref (id, name, address, city, state, zip, phone)"
         " VALUES (%s, %s, %s, %s, %s, %s, %s)",
         map_payer_ref,
+        read_csv,
     ),
     (
         "patient_ref",
@@ -228,6 +331,7 @@ LOADERS = [
         " (id, first_name, last_name, birthdate, gender, address, city, state, zip)"
         " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
         map_patient_ref,
+        read_csv,
     ),
     (
         "organization_ref",
@@ -235,6 +339,7 @@ LOADERS = [
         "INSERT INTO organization_ref (id, name, address, city, state, zip)"
         " VALUES (%s, %s, %s, %s, %s, %s)",
         map_organization_ref,
+        read_csv,
     ),
     (
         "provider_ref",
@@ -242,6 +347,7 @@ LOADERS = [
         "INSERT INTO provider_ref (id, organization_id, name, specialty)"
         " VALUES (%s, %s, %s, %s)",
         map_provider_ref,
+        read_csv,
     ),
     (
         "coverage",
@@ -249,6 +355,7 @@ LOADERS = [
         "INSERT INTO coverage (patient_id, payer_id, start_year, end_year, ownership)"
         " VALUES (%s, %s, %s, %s, %s)",
         map_coverage,
+        read_csv,
     ),
     (
         "network_participation",
@@ -257,6 +364,25 @@ LOADERS = [
         " (payer_id, organization_id, in_network, effective_from, effective_to)"
         " VALUES (%s, %s, %s, %s, %s)",
         map_network_participation,
+        read_csv,
+    ),
+    (
+        "prior_auth_eligible_code",
+        "eligible_codes.csv",
+        "INSERT INTO prior_auth_eligible_code (code, code_type, description, typical_cost)"
+        " VALUES (%s, %s, %s, %s)",
+        map_eligible_code,
+        read_curated,
+    ),
+    (
+        "prior_auth_criteria",
+        "criteria.csv",
+        "INSERT INTO prior_auth_criteria"
+        " (code, code_type, criterion_description, required_condition_code,"
+        "  auto_approve_if_met, default_validity_days)"
+        " VALUES (%s, %s, %s, %s, %s, %s)",
+        map_criteria,
+        read_curated,
     ),
 ]
 
@@ -268,8 +394,8 @@ LOADERS = [
 def prepare() -> list[tuple[str, str, list[tuple]]]:
     """Read and map every loader's source, before touching the database."""
     prepared = []
-    for table, source, insert, mapper in LOADERS:
-        rows = read_csv(source)
+    for table, source, insert, mapper, reader in LOADERS:
+        rows = reader(source)
         try:
             values = mapper(rows)
         except KeyError as exc:
