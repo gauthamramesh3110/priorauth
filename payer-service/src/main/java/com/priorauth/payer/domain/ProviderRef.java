@@ -23,4 +23,11 @@ public class ProviderRef {
 
     @Column(length = 64)
     private String specialty;
+
+    public ProviderRef(UUID id, UUID organizationId, String name, String specialty) {
+        this.id = id;
+        this.organizationId = organizationId;
+        this.name = name;
+        this.specialty = specialty;
+    }
 }

@@ -20,4 +20,11 @@ public class NetworkParticipation {
     @Column(nullable = false)
     private LocalDate effectiveFrom;
     private LocalDate effectiveTo;
+
+    public NetworkParticipation(NetworkParticipationId id, Boolean inNetwork, LocalDate effectiveFrom, LocalDate effectiveTo) {
+        this.id =  id;
+        this.inNetwork = inNetwork;
+        this.effectiveFrom = effectiveFrom;
+        this.effectiveTo = effectiveTo;
+    }
 }
