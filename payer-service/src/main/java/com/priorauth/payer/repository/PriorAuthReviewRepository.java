@@ -8,4 +8,6 @@ import java.util.UUID;
 
 public interface PriorAuthReviewRepository extends Repository<PriorAuthReview, UUID> {
     Optional<PriorAuthReview> findByRequestId(UUID requestId);
+
+    PriorAuthReview save(PriorAuthReview review);
 }

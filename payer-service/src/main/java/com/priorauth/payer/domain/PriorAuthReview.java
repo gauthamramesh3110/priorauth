@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -22,8 +23,7 @@ public class PriorAuthReview {
             UUID payerId,
             String requestedCode,
             CodeType codeType,
-            Instant submittedAt
-    ) {
+            Instant submittedAt) {
         this.requestId = Objects.requireNonNull(requestId, "requestId is required");
         this.patientId = Objects.requireNonNull(patientId, "patientId is required");
         this.providerId = Objects.requireNonNull(providerId, "providerId is required");
@@ -78,4 +78,46 @@ public class PriorAuthReview {
     private Instant expiredAt;
 
     private UUID appealOf;
+
+    public void escalateToPhysician(EscalationReason reason) {
+        Objects.requireNonNull(reason, "physician escalation requires a reason");
+
+        if (decision != null) {
+            throw new IllegalStateException("Review decision has already been made");
+        }
+
+        this.reviewTier = ReviewTier.PHYSICIAN;
+        this.reasonCode = reason.name();
+    }
+
+    public void markForAutoApproval() {
+        if (decision != null) {
+            throw new IllegalStateException("Review decision has already been made");
+        }
+
+        this.reviewTier = ReviewTier.AUTO;
+    }
+
+    public void setDecision(Decision decision, String decisionReason, Instant decidedAt, Instant expiresAt) {
+        if (this.decision != null) {
+            throw new IllegalStateException("Review decision has already been made");
+        }
+
+        if (decision == null) {
+            throw new IllegalArgumentException("decision is required to set decision");
+        }
+
+        if (decisionReason == null) {
+            throw new IllegalArgumentException("decision reason is required to set decision");
+        }
+
+        if (decidedAt == null) {
+            throw new IllegalArgumentException("decision date is required to set decision");
+        }
+
+        this.decision = decision;
+        this.decisionReason = decisionReason;
+        this.decidedAt = decidedAt;
+        this.expiresAt = expiresAt;
+    }
 }
