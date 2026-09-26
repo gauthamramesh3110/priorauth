@@ -28,8 +28,6 @@ public class DecisionService {
 
     @Transactional
     public void decide(PriorAuthReview review, Decision decision, String decisionReason, PriorAuthCriteria criteria) {
-        ReviewTier reviewTier = review.getReviewTier();
-        String reasonCode = review.getReasonCode();
         Instant decidedAt = Instant.now(clock);
 
         if (decision.equals(Decision.APPROVED)) {
