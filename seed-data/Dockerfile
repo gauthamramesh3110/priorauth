@@ -16,6 +16,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # around 79 MB, it is gitignored, and pass 1 runs on the host rather than here.
 COPY load.py filter_synthea.py ./
 COPY working-set/ ./working-set/
+COPY curated/ ./curated/
 
 # Runs as nobody. The seed job needs no write access to its own filesystem.
 USER 65534:65534
