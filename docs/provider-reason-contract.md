@@ -18,9 +18,9 @@ Implemented 2026-09-27. This supersedes reasonCode/reasonDescription for the pro
 - V4 renames reason_code to reason and changes its type to TEXT. Existing text and nulls are retained verbatim; old code values are not translated into fabricated descriptions.
 - Existing migrations remain unchanged. V4 has not been applied to a running database as part of this change.
 
-## Coordinated contract updates still required in Notion
+## Coordinated contract updates published in Notion
 
-The attempted documentation update was blocked by automatic approval review. These edits are prepared for explicit approval; they have not been published.
+With explicit user approval, the following updates were published and verified on 2026-09-27 in 03 Payer Service, 04 Provider Service, 05 Kafka Contracts, and PA-20. Story statuses were not changed.
 
 ### 03 Payer Service / PA-20
 
