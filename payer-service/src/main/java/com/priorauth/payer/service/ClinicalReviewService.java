@@ -150,6 +150,59 @@ public class ClinicalReviewService {
         );
     }
 
+    @Transactional
+    public ClaimReviewResponse claimReviewItem(UUID requestId, ClaimReviewRequest claimReviewRequest) {
+        Optional<PriorAuthReview> review = this.priorAuthReviewRepository.findByRequestIdForUpdate(requestId);
+
+        if (review.isEmpty()) {
+            return null;
+        }
+
+        PriorAuthReview priorAuthReview = review.get();
+        ClaimReviewStatus status;
+
+        if (priorAuthReview.getReviewTier() == null || !priorAuthReview.getReviewTier().equals(ReviewTier.PHYSICIAN)) {
+            return new ClaimReviewResponse(
+                    null,
+                    requestId,
+                    ClaimReviewStatus.NOT_PHYSICIAN_TIER
+            );
+        }
+
+        if(priorAuthReview.getDecision() != null) {
+            return new ClaimReviewResponse(
+                    null,
+                    requestId,
+                    ClaimReviewStatus.ALREADY_DECIDED
+            );
+        }
+
+        if (priorAuthReview.getReviewerId() != null) {
+            if (priorAuthReview.getReviewerId().equals(claimReviewRequest.reviewerId())) {
+                return new ClaimReviewResponse(
+                        claimReviewRequest.reviewerId(),
+                        requestId,
+                        ClaimReviewStatus.ALREADY_OWNED
+                );
+            }
+
+            return new ClaimReviewResponse(
+                    priorAuthReview.getReviewerId(),
+                    requestId,
+                    ClaimReviewStatus.OWNED_BY_ANOTHER_REVIEWER
+            );
+        }
+
+        priorAuthReview.setReviewerId(claimReviewRequest.reviewerId());
+        this.priorAuthReviewRepository.save(priorAuthReview);
+
+        return new ClaimReviewResponse(
+                claimReviewRequest.reviewerId(),
+                requestId,
+                ClaimReviewStatus.CLAIMED
+        );
+    }
+
     private ReviewItem generateReviewItem(PriorAuthReview review) {
         return new ReviewItem(
                 review.getRequestId(),

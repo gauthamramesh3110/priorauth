@@ -153,4 +153,11 @@ public class PriorAuthReview {
         this.decidedAt = decidedAt;
         this.expiresAt = expiresAt;
     }
+
+    public void setReviewerId(UUID reviewerId) {
+        if  (reviewerId == null) {
+            throw new IllegalArgumentException("reviewerId is required to set reviewer");
+        }
+        this.reviewerId = reviewerId;
+    }
 }
