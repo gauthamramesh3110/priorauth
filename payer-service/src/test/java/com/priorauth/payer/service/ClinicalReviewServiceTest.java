@@ -27,13 +27,14 @@ class ClinicalReviewServiceTest {
 
     @BeforeEach
     void setUp() {
+        Clock clock = Clock.fixed(Instant.parse("2026-09-27T12:00:00Z"), ZoneOffset.UTC);
         // Exercise the real evaluator and decision service; only persistence is mocked.
         DecisionService decisions = new DecisionService(
-                Clock.fixed(Instant.parse("2026-09-27T12:00:00Z"), ZoneOffset.UTC), reviews);
-        service = new ClinicalReviewService(conditions, criteria, reviews, decisions, new ClinicalEvaluator());
+               clock, reviews);
+        service = new ClinicalReviewService(conditions, criteria, reviews, decisions, new ClinicalEvaluator(), clock);
         review = new PriorAuthReview(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
                 UUID.randomUUID(), UUID.randomUUID(), "TEST_PROCEDURE", CodeType.PROCEDURE,
-                Instant.parse("2026-09-26T00:30:00Z"));
+                Instant.parse("2026-09-26T00:30:00Z"), "Further testing requested after an abnormal observation.");
     }
 
     @Test
@@ -49,6 +50,7 @@ class ClinicalReviewServiceTest {
                 () -> assertEquals(ReviewTier.AUTO, review.getReviewTier()),
                 () -> assertEquals(Decision.APPROVED, review.getDecision()),
                 () -> assertEquals("AUTO_APPROVED", review.getDecisionReason()),
+                () -> assertEquals("Further testing requested after an abnormal observation.", review.getReason()),
                 () -> assertEquals(Instant.parse("2026-09-27T12:00:00Z"), review.getDecidedAt()),
                 () -> assertEquals(Instant.parse("2026-10-27T12:00:00Z"), review.getExpiresAt()),
                 () -> assertNull(review.getExpiredAt()));
@@ -69,7 +71,8 @@ class ClinicalReviewServiceTest {
 
         assertAll(
                 () -> assertEquals(ReviewTier.PHYSICIAN, review.getReviewTier()),
-                () -> assertEquals(reason.name(), review.getReasonCode()),
+                () -> assertEquals(reason, review.getEscalationReason()),
+                () -> assertEquals("Further testing requested after an abnormal observation.", review.getReason()),
                 () -> assertNull(review.getDecision()),
                 () -> assertNull(review.getDecisionReason()),
                 () -> assertNull(review.getDecidedAt()),
@@ -78,6 +81,39 @@ class ClinicalReviewServiceTest {
         verify(reviews).save(review);
     }
 
+    @ParameterizedTest
+    @org.junit.jupiter.params.provider.NullSource
+    @org.junit.jupiter.params.provider.ValueSource(strings = {
+            "Further testing requested after an abnormal observation.",
+            "Symptoms persist.\nPlease review the attached clinical evidence."
+    })
+    void queueReturnsProviderReasonWithoutConditionLookup(String reason) {
+        PriorAuthReview queueReview = new PriorAuthReview(UUID.randomUUID(), UUID.randomUUID(),
+                UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "US", CodeType.IMAGING,
+                Instant.parse("2026-09-26T00:30:00Z"), reason);
+        queueReview.escalateToPhysician(EscalationReason.NO_CRITERION_DEFINED);
+        PatientRef patient = mock(PatientRef.class);
+        ProviderRef provider = mock(ProviderRef.class);
+        PriorAuthEligibleCode code = mock(PriorAuthEligibleCode.class);
+        when(patient.getFirstName()).thenReturn("Test");
+        when(patient.getLastName()).thenReturn("Patient");
+        when(provider.getName()).thenReturn("Test Provider");
+        when(provider.getSpecialty()).thenReturn("GENERAL PRACTICE");
+        when(code.getDescription()).thenReturn("Ultrasound");
+        ReflectionTestUtils.setField(queueReview, "patientRef", patient);
+        ReflectionTestUtils.setField(queueReview, "providerRef", provider);
+        ReflectionTestUtils.setField(queueReview, "priorAuthEligibleCode", code);
+        var pageable = org.springframework.data.domain.PageRequest.of(0, 20);
+        when(reviews.findByReviewerIdAndReviewTierAndExpiresAtBefore(null, ReviewTier.PHYSICIAN,
+                Instant.parse("2026-10-04T12:00:00Z"), pageable)).thenReturn(List.of(queueReview));
+
+        var queue = service.getReviewQueue(ReviewTier.PHYSICIAN, null, 7, pageable);
+
+        assertEquals(1, queue.content().size());
+        assertEquals(reason, queue.content().getFirst().reason());
+        assertEquals(EscalationReason.NO_CRITERION_DEFINED, queue.content().getFirst().escalationReason());
+        verifyNoInteractions(conditions, criteria);
+    }
     private static PriorAuthCriteria criterion(boolean autoApprove) {
         PriorAuthCriteria criterion = new PriorAuthCriteria(1L, "TEST_PROCEDURE", CodeType.PROCEDURE,
                 "Requires condition", autoApprove, 30);

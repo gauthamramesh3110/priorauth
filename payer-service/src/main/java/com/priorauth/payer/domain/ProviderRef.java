@@ -1,11 +1,11 @@
 package com.priorauth.payer.domain;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @NoArgsConstructor
@@ -23,6 +23,9 @@ public class ProviderRef {
 
     @Column(length = 64)
     private String specialty;
+
+    @OneToMany(mappedBy = "providerRef", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<PriorAuthReview> priorAuthReviews = new ArrayList<>();
 
     public ProviderRef(UUID id, UUID organizationId, String name, String specialty) {
         this.id = id;

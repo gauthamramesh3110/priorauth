@@ -1,12 +1,12 @@
 package com.priorauth.payer.domain;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @NoArgsConstructor
@@ -39,4 +39,7 @@ public class PatientRef {
 
     @Column(length = 16)
     private String zip;
+
+    @OneToMany(mappedBy = "patientRef", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<PriorAuthReview> priorAuthReviews = new ArrayList<>();
 }

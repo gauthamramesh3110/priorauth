@@ -24,6 +24,20 @@ public class PriorAuthReview {
             String requestedCode,
             CodeType codeType,
             Instant submittedAt) {
+        this(requestId, patientId, providerId, organizationId, payerId, requestedCode, codeType, submittedAt, null);
+    }
+
+    public PriorAuthReview(
+            UUID requestId,
+            UUID patientId,
+            UUID providerId,
+            UUID organizationId,
+            UUID payerId,
+            String requestedCode,
+            CodeType codeType,
+            Instant submittedAt,
+            String reason) {
+        this.reason = reason;
         this.requestId = Objects.requireNonNull(requestId, "requestId is required");
         this.patientId = Objects.requireNonNull(patientId, "patientId is required");
         this.providerId = Objects.requireNonNull(providerId, "providerId is required");
@@ -36,9 +50,9 @@ public class PriorAuthReview {
 
     @Id
     private UUID requestId;
-    @Column(nullable = false)
+    @Column(name = "patient_id", nullable = false, insertable = false, updatable = false)
     private UUID patientId;
-    @Column(nullable = false)
+    @Column(name = "provider_id", nullable = false, insertable = false, updatable = false)
     private UUID providerId;
     @Column(nullable = false)
     private UUID organizationId;
@@ -50,8 +64,8 @@ public class PriorAuthReview {
     @Enumerated(EnumType.STRING)
     @Column(length = 16, nullable = false)
     private CodeType codeType;
-    @Column(length = 32)
-    private String reasonCode;
+    @Column(name = "reason", columnDefinition = "text")
+    private String reason;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 16)
@@ -64,6 +78,10 @@ public class PriorAuthReview {
     @Column(length = 16)
     private ReviewTier reviewTier;
     private UUID reviewerId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "escalation_reason", length = 64)
+    private EscalationReason escalationReason;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 16)
@@ -79,6 +97,21 @@ public class PriorAuthReview {
 
     private UUID appealOf;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "patient_id")
+    private PatientRef patientRef;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "provider_id")
+    private ProviderRef providerRef;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumns({
+            @JoinColumn(name = "requestedCode", referencedColumnName = "code", insertable = false, updatable = false),
+            @JoinColumn(name = "codeType", referencedColumnName = "codeType", insertable = false, updatable = false)
+    })
+    private PriorAuthEligibleCode priorAuthEligibleCode;
+
     public void escalateToPhysician(EscalationReason reason) {
         Objects.requireNonNull(reason, "physician escalation requires a reason");
 
@@ -87,7 +120,7 @@ public class PriorAuthReview {
         }
 
         this.reviewTier = ReviewTier.PHYSICIAN;
-        this.reasonCode = reason.name();
+        this.escalationReason = reason;
     }
 
     public void markForAutoApproval() {

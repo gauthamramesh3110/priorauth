@@ -8,4 +8,6 @@ import java.util.UUID;
 
 public interface PatientConditionRepository extends Repository<PatientCondition, Long> {
     List<PatientCondition> findByPatientIdAndCode(UUID patientId, String code);
+
+
 }
