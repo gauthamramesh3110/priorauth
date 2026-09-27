@@ -9,6 +9,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.*;
@@ -23,6 +24,7 @@ class ClinicalReviewServiceTest {
     @Mock private PriorAuthCriteriaRepository criteria;
     @Mock private PriorAuthReviewRepository reviews;
     @Mock private CoverageRepository coverages;
+    @Mock private ApplicationEventPublisher publisher;
     private ClinicalReviewService service;
     private PriorAuthReview review;
 
@@ -31,7 +33,7 @@ class ClinicalReviewServiceTest {
         Clock clock = Clock.fixed(Instant.parse("2026-09-27T12:00:00Z"), ZoneOffset.UTC);
         // Exercise the real evaluator and decision service; only persistence is mocked.
         DecisionService decisions = new DecisionService(
-               clock, reviews);
+               clock, reviews, publisher);
         service = new ClinicalReviewService(conditions, criteria, reviews, coverages, decisions, new ClinicalEvaluator(), clock);
         review = new PriorAuthReview(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
                 UUID.randomUUID(), UUID.randomUUID(), "TEST_PROCEDURE", CodeType.PROCEDURE,

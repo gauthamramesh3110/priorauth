@@ -23,3 +23,7 @@ server:
 logging:
   level:
     org.flywaydb: INFO
+
+payer:
+  approval:
+    default-validity-days: 30

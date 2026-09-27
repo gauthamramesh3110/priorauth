@@ -9,6 +9,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -22,11 +23,12 @@ import static org.mockito.Mockito.*;
 class DecisionServiceTest {
     private static final Instant NOW = Instant.parse("2026-09-26T12:34:56Z");
     @Mock private PriorAuthReviewRepository repository;
+    @Mock private ApplicationEventPublisher publisher;
     private DecisionService service;
 
     @BeforeEach
     void setUp() {
-        service = new DecisionService(Clock.fixed(NOW, ZoneOffset.UTC), repository);
+        service = new DecisionService(Clock.fixed(NOW, ZoneOffset.UTC), repository, publisher);
     }
 
     @ParameterizedTest
@@ -37,7 +39,7 @@ class DecisionServiceTest {
         review.markForAutoApproval();
         PriorAuthCriteria criterion = criterion(days);
 
-        service.decide(review, Decision.APPROVED, "Required condition met", criterion);
+        service.decide(review, Decision.APPROVED, "Required condition met", criterion.getDefaultValidityDays());
 
         assertAll(
                 () -> assertEquals(Decision.APPROVED, review.getDecision()),
@@ -54,7 +56,7 @@ class DecisionServiceTest {
         PriorAuthReview review = review();
         review.escalateToPhysician(EscalationReason.ALWAYS_PHYSICIAN_REVIEW);
 
-        service.decide(review, Decision.APPROVED, "Approved after review", criterion(30));
+        service.decide(review, Decision.APPROVED, "Approved after review", criterion(30).getDefaultValidityDays());
 
         assertEquals(ReviewTier.PHYSICIAN, review.getReviewTier());
         assertEquals(Decision.APPROVED, review.getDecision());
@@ -85,7 +87,7 @@ class DecisionServiceTest {
         review.setDecision(Decision.DENIED, "Original reason", originalTime, null);
 
         assertThrows(IllegalStateException.class,
-                () -> service.decide(review, Decision.APPROVED, "Replacement", criterion(30)));
+                () -> service.decide(review, Decision.APPROVED, "Replacement", criterion(30).getDefaultValidityDays()));
 
         assertEquals(Decision.DENIED, review.getDecision());
         assertEquals("Original reason", review.getDecisionReason());
@@ -98,7 +100,7 @@ class DecisionServiceTest {
     void missingReasonDoesNotMutateOrSaveReview() {
         PriorAuthReview review = review();
         assertThrows(IllegalArgumentException.class,
-                () -> service.decide(review, Decision.APPROVED, null, criterion(30)));
+                () -> service.decide(review, Decision.APPROVED, null, criterion(30).getDefaultValidityDays()));
         assertNull(review.getDecision());
         assertNull(review.getDecidedAt());
         assertNull(review.getExpiresAt());

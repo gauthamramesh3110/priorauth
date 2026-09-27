@@ -56,4 +56,19 @@ public class PayerController {
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(claimReviewResponse);
     }
+
+    @PostMapping("/review-queue/{requestId}/decide")
+    public ResponseEntity<DecisionResponse> decideReviewItem(
+            @PathVariable(name = "requestId") UUID requestId,
+            @Valid @RequestBody DecisionRequest decisionRequest
+    ) {
+        DecisionResponse response = this.clinicalReviewService.decideReviewItem(requestId, decisionRequest);
+        if(response == null) return ResponseEntity.notFound().build();
+
+        if(!response.status().equals(DecisionStatus.DECISION_UPDATED)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+        }
+
+        return ResponseEntity.ok(response);
+    }
 }

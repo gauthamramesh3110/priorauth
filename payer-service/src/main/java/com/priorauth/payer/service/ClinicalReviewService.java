@@ -49,7 +49,7 @@ public class ClinicalReviewService {
         LocalDate submissionDate = review.getSubmittedAt().atZone(ZoneOffset.UTC).toLocalDate();
 
         Optional<PriorAuthCriteria> criterion = this.priorAuthCriteriaRepository.findByCodeAndCodeType(code, codeType);
-        String requiredConditionCode = criterion.isPresent() ? criterion.get().getRequiredConditionCode() : null;
+        String requiredConditionCode = criterion.map(PriorAuthCriteria::getRequiredConditionCode).orElse(null);
 
         List<PatientCondition> conditions = this.patientConditionRepository.findByPatientIdAndCode(patientId,
                 requiredConditionCode);
@@ -57,7 +57,7 @@ public class ClinicalReviewService {
 
         if (outcome.result().equals(EvaluationResult.AUTO_APPROVE)) {
             review.markForAutoApproval();
-            this.decisionService.decide(review, Decision.APPROVED, "AUTO_APPROVED", criterion.orElseThrow());
+            this.decisionService.decide(review, Decision.APPROVED, "AUTO_APPROVED", criterion.map(PriorAuthCriteria::getDefaultValidityDays).orElse(null));
         } else {
             review.escalateToPhysician(outcome.reason());
             priorAuthReviewRepository.save(review);
@@ -200,6 +200,42 @@ public class ClinicalReviewService {
                 claimReviewRequest.reviewerId(),
                 requestId,
                 ClaimReviewStatus.CLAIMED
+        );
+    }
+
+    @Transactional
+    public DecisionResponse decideReviewItem(UUID requestId, DecisionRequest decisionRequest) {
+        Optional<PriorAuthReview> review = this.priorAuthReviewRepository.findByRequestIdForUpdate(requestId);
+        if (review.isEmpty()) {
+            return null;
+        }
+
+        PriorAuthReview priorAuthReview = review.get();
+
+        if(priorAuthReview.getReviewerId() == null || !priorAuthReview.getReviewerId().equals(decisionRequest.reviewerId())) {
+            return new DecisionResponse(
+                    DecisionStatus.REVIEW_NOT_OWNED
+            );
+        }
+
+        if(priorAuthReview.getDecision() != null) {
+            return new DecisionResponse(
+                    DecisionStatus.ALREADY_DECIDED
+            );
+        }
+
+        if(!ReviewTier.PHYSICIAN.equals(priorAuthReview.getReviewTier())) {
+            return new DecisionResponse(
+                    DecisionStatus.NOT_PHYSICIAN_TIER
+            );
+        }
+
+        Optional<PriorAuthCriteria> criteria = this.priorAuthCriteriaRepository.findByCodeAndCodeType(priorAuthReview.getRequestedCode(), priorAuthReview.getCodeType());
+        Integer defaultValidityDays = criteria.map(PriorAuthCriteria::getDefaultValidityDays).orElse(null);
+
+        this.decisionService.decide(priorAuthReview, decisionRequest.decision(), decisionRequest.decisionReason(), defaultValidityDays);
+        return  new DecisionResponse(
+            DecisionStatus.DECISION_UPDATED
         );
     }
 
