@@ -18,4 +18,6 @@ public interface CoverageRepository extends Repository<Coverage, Long> {
                       AND c.endYear >= :year
             """)
     List<Coverage> findCoveragesYear(@Param("patientId") UUID patientId, @Param("payerId") UUID payerId, @Param("year") Integer year);
+
+    List<Coverage> findCoveragesByPatientId(@Param("patientId") UUID patientId);
 }

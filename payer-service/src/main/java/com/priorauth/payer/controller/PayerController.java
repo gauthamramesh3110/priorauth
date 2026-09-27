@@ -1,7 +1,9 @@
 package com.priorauth.payer.controller;
 
+import java.util.List;
 import java.util.UUID;
 
+import com.priorauth.payer.domain.CodeType;
 import com.priorauth.payer.dto.*;
 import com.priorauth.payer.service.ClinicalReviewService;
 import jakarta.validation.Valid;
@@ -70,5 +72,27 @@ public class PayerController {
         }
 
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/coverage")
+    public ResponseEntity<List<CoverageItem>> getCoverages(
+            @RequestParam(name = "patientId") UUID patientId
+    ) {
+        return ResponseEntity.ok(clinicalReviewService.getCoverages(patientId));
+    }
+
+    @GetMapping("/eligible-codes")
+    public ResponseEntity<List<EligibleCode>> getEligibleCodes() {
+        return ResponseEntity.ok(clinicalReviewService.getEligibleCodes());
+    }
+
+    @GetMapping("/criteria/{codeType}/{code}")
+    public ResponseEntity<PriorAuthCriterion> getPriorAuthCriterion(
+            @PathVariable(name = "code") String code,
+            @PathVariable(name = "codeType") CodeType codeType
+    ) {
+        PriorAuthCriterion criterion = clinicalReviewService.getPriorAuthCriteria(code, codeType);
+        if (criterion == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(criterion);
     }
 }

@@ -23,6 +23,7 @@ class ClinicalReviewServiceTest {
     @Mock private PatientConditionRepository conditions;
     @Mock private PriorAuthCriteriaRepository criteria;
     @Mock private PriorAuthReviewRepository reviews;
+    @Mock private PriorAuthEligibleCodeRepository eligibleCodeRepository;
     @Mock private CoverageRepository coverages;
     @Mock private ApplicationEventPublisher publisher;
     private ClinicalReviewService service;
@@ -34,7 +35,7 @@ class ClinicalReviewServiceTest {
         // Exercise the real evaluator and decision service; only persistence is mocked.
         DecisionService decisions = new DecisionService(
                clock, reviews, publisher);
-        service = new ClinicalReviewService(conditions, criteria, reviews, coverages, decisions, new ClinicalEvaluator(), clock);
+        service = new ClinicalReviewService(conditions, criteria, reviews, eligibleCodeRepository, coverages, decisions, new ClinicalEvaluator(), clock);
         review = new PriorAuthReview(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
                 UUID.randomUUID(), UUID.randomUUID(), "TEST_PROCEDURE", CodeType.PROCEDURE,
                 Instant.parse("2026-09-26T00:30:00Z"), "Further testing requested after an abnormal observation.");

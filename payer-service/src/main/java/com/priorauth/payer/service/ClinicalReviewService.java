@@ -9,32 +9,30 @@ import java.util.*;
 
 import com.priorauth.payer.domain.*;
 import com.priorauth.payer.dto.*;
-import com.priorauth.payer.repository.CoverageRepository;
+import com.priorauth.payer.repository.*;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import com.priorauth.payer.repository.PatientConditionRepository;
-import com.priorauth.payer.repository.PriorAuthCriteriaRepository;
-import com.priorauth.payer.repository.PriorAuthReviewRepository;
 
 @Service
 public class ClinicalReviewService {
     private final PatientConditionRepository patientConditionRepository;
     private final PriorAuthCriteriaRepository priorAuthCriteriaRepository;
     private final PriorAuthReviewRepository priorAuthReviewRepository;
+    private final PriorAuthEligibleCodeRepository priorAuthEligibleCodeRepository;
     private final CoverageRepository coverageRepository;
     private final DecisionService decisionService;
     private final ClinicalEvaluator evaluator;
     private final Clock clock;
 
     public ClinicalReviewService(PatientConditionRepository patientConditionRepository,
-            PriorAuthCriteriaRepository priorAuthCriteriaRepository,
-            PriorAuthReviewRepository priorAuthReviewRepository, CoverageRepository coverageRepository, DecisionService decisionService,
-            ClinicalEvaluator evaluator, Clock clock) {
+                                 PriorAuthCriteriaRepository priorAuthCriteriaRepository,
+                                 PriorAuthReviewRepository priorAuthReviewRepository, PriorAuthEligibleCodeRepository priorAuthEligibleCodeRepository, CoverageRepository coverageRepository, DecisionService decisionService,
+                                 ClinicalEvaluator evaluator, Clock clock) {
         this.patientConditionRepository = patientConditionRepository;
         this.priorAuthCriteriaRepository = priorAuthCriteriaRepository;
         this.priorAuthReviewRepository = priorAuthReviewRepository;
+        this.priorAuthEligibleCodeRepository = priorAuthEligibleCodeRepository;
         this.coverageRepository = coverageRepository;
         this.decisionService = decisionService;
         this.evaluator = evaluator;
@@ -236,6 +234,40 @@ public class ClinicalReviewService {
         this.decisionService.decide(priorAuthReview, decisionRequest.decision(), decisionRequest.decisionReason(), defaultValidityDays);
         return  new DecisionResponse(
             DecisionStatus.DECISION_UPDATED
+        );
+    }
+
+    public List<CoverageItem> getCoverages(UUID patientId) {
+        return this.coverageRepository.findCoveragesByPatientId(patientId).stream().map(coverage -> new CoverageItem(
+                coverage.getPayerId(),
+                coverage.getStartYear(),
+                coverage.getEndYear(),
+                coverage.getOwnership()
+        )).toList();
+    }
+
+    public List<EligibleCode> getEligibleCodes() {
+        return this.priorAuthEligibleCodeRepository.findAll().stream().map(eligibleCode -> new EligibleCode(
+                eligibleCode.getId().getCode(),
+                eligibleCode.getId().getCodeType(),
+                eligibleCode.getDescription(),
+                eligibleCode.getTypicalCost()
+        )).toList();
+    }
+
+    public PriorAuthCriterion getPriorAuthCriteria(String code, CodeType codeType) {
+        Optional<PriorAuthCriteria> criteria = this.priorAuthCriteriaRepository.findByCodeAndCodeType(code, codeType);
+        if (criteria.isEmpty()) {
+            return null;
+        }
+        PriorAuthCriteria priorAuthCriteria = criteria.get();
+        return  new PriorAuthCriterion(
+                priorAuthCriteria.getCode(),
+                priorAuthCriteria.getCodeType(),
+                priorAuthCriteria.getCriterionDescription(),
+                priorAuthCriteria.getRequiredConditionCode(),
+                priorAuthCriteria.getAutoApproveIfMet(),
+                priorAuthCriteria.getDefaultValidityDays()
         );
     }
 
