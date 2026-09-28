@@ -13,7 +13,7 @@
 
     <modules>
         <module>payer-service</module>
-<!--        <module>provider-service</module>-->
+        <module>provider-service</module>
     </modules>
 
     <properties>
