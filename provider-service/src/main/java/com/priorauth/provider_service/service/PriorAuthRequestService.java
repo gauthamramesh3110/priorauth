@@ -106,6 +106,16 @@ public class PriorAuthRequestService {
                 null,
                 TEMP_USER_ID
         );
+        // TEMPORARY PA-29 synchronous bridge. Replace with Kafka in PA-35.
+        AuthReviewResponse result = payerClient.submitRequest(new AuthReviewRequest(
+                priorAuthRequest.getId(), priorAuthRequest.getPatientId(), priorAuthRequest.getProviderId(),
+                priorAuthRequest.getOrganizationId(), priorAuthRequest.getPayerId(),
+                priorAuthRequest.getRequestedCode(), priorAuthRequest.getCodeType(),
+                priorAuthRequest.getReason(), priorAuthRequest.getSubmittedAt()));
+
+        priorAuthRequest.recordPayerResult(result.status(), result.statusReason(),
+                result.decidedAt(), result.expiresAt());
+
         priorAuthRequestRepository.save(priorAuthRequest);
         return new PriorAuthRequestResponse(
                 PriorAuthRequestStatus.SUBMITTED, priorAuthRequest.getId(), null

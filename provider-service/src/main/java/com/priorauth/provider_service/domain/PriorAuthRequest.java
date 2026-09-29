@@ -41,6 +41,18 @@ public class PriorAuthRequest {
         this.submittedBy = Objects.requireNonNull(submittedBy, "submittedBy is required");
     }
 
+    /** Apply the synchronous PA-29 bridge outcome before committing the request. */
+    public void recordPayerResult(RequestStatus status, String reason, Instant decidedAt, Instant expiresAt) {
+        if (status != RequestStatus.INTAKE_REJECTED && status != RequestStatus.IN_REVIEW
+                && status != RequestStatus.APPROVED && status != RequestStatus.DENIED) {
+            throw new IllegalArgumentException("Unexpected payer result: " + status);
+        }
+        this.status = status;
+        this.statusReason = reason;
+        this.decidedAt = decidedAt;
+        this.expiresAt = expiresAt;
+    }
+
     @Id
     private UUID id;
 

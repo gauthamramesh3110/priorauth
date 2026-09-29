@@ -50,9 +50,9 @@ public class PriorAuthReview {
 
     @Id
     private UUID requestId;
-    @Column(name = "patient_id", nullable = false, insertable = false, updatable = false)
+    @Column(name = "patient_id", nullable = false)
     private UUID patientId;
-    @Column(name = "provider_id", nullable = false, insertable = false, updatable = false)
+    @Column(name = "provider_id", nullable = false)
     private UUID providerId;
     @Column(nullable = false)
     private UUID organizationId;
@@ -98,11 +98,11 @@ public class PriorAuthReview {
     private UUID appealOf;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "patient_id")
+    @JoinColumn(name = "patient_id", insertable = false, updatable = false)
     private PatientRef patientRef;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "provider_id")
+    @JoinColumn(name = "provider_id", insertable = false, updatable = false)
     private ProviderRef providerRef;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -111,6 +111,12 @@ public class PriorAuthReview {
             @JoinColumn(name = "codeType", referencedColumnName = "codeType", insertable = false, updatable = false)
     })
     private PriorAuthEligibleCode priorAuthEligibleCode;
+
+    public void recordIntake(IntakeValidationOutcome outcome) {
+        Objects.requireNonNull(outcome, "intake outcome is required");
+        this.intakeResult = outcome.intakeResult();
+        this.intakeReason = outcome.intakeReason();
+    }
 
     public void escalateToPhysician(EscalationReason reason) {
         Objects.requireNonNull(reason, "physician escalation requires a reason");
