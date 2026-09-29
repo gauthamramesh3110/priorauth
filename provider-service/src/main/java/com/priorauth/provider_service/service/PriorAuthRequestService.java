@@ -163,7 +163,7 @@ public class PriorAuthRequestService {
                 item.getExpiresAt(),
                 item.getAppealOf(),
                 item.getSubmittedBy()
-        ));
+        )).toList();
 
         return requestItems;
     }
