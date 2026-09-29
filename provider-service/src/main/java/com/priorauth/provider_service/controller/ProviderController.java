@@ -8,6 +8,7 @@ import com.priorauth.provider_service.dto.PriorAuthRequestStatus;
 import com.priorauth.provider_service.service.PriorAuthRequestService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -52,9 +53,9 @@ public class ProviderController {
 
     @GetMapping("/requests")
     public ResponseEntity<List<PriorAuthRequestItem>> getRequests(
-            @RequestParam(name = "patientId") UUID patientId,
-            @RequestParam(name = "status") RequestStatus requestStatus,
-            @PageableDefault(page = 0, size = 20) Pageable pageable
+            @RequestParam(name = "patientId", required = false) UUID patientId,
+            @RequestParam(name = "status", required = false) RequestStatus requestStatus,
+            @PageableDefault(page = 0, size = 20, sort = "id", direction = Sort.Direction.ASC) Pageable pageable
     ) {
         return ResponseEntity.ok(this.priorAuthRequestService.getRequestItems(patientId, requestStatus, pageable));
     }

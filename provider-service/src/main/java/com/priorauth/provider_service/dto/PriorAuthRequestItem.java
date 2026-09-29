@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 public record PriorAuthRequestItem(
+        UUID requestId,
         UUID patientId,
         UUID providerId,
         UUID organizationId,

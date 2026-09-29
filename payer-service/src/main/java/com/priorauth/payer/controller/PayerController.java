@@ -8,6 +8,7 @@ import com.priorauth.payer.dto.*;
 import com.priorauth.payer.service.ClinicalReviewService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,7 +30,7 @@ public class PayerController {
             @RequestParam(name = "tier", defaultValue = "PHYSICIAN") ReviewTier tier,
             @RequestParam("reviewerId") UUID reviewerId,
             @RequestParam("expiringWithinDays") Integer expiringWithinDays,
-            @PageableDefault(page = 0, size = 20) Pageable pageable) {
+            @PageableDefault(page = 0, size = 20, sort = "requestId", direction = Sort.Direction.ASC) Pageable pageable) {
         return ResponseEntity.ok(clinicalReviewService.getReviewQueue(tier, reviewerId, expiringWithinDays, pageable));
     }
 

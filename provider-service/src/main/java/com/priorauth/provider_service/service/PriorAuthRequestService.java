@@ -122,6 +122,7 @@ public class PriorAuthRequestService {
         PriorAuthRequest priorAuthRequest = request.get();
 
         return new PriorAuthRequestItem(
+                priorAuthRequest.getId(),
                 priorAuthRequest.getPatientId(),
                 priorAuthRequest.getProviderId(),
                 priorAuthRequest.getOrganizationId(),
@@ -139,17 +140,19 @@ public class PriorAuthRequestService {
     }
 
     public List<PriorAuthRequestItem> getRequestItems(UUID patientId, RequestStatus status, Pageable pageable) {
-        List<PriorAuthRequest> requests;
+        List<PriorAuthRequest> requests = new ArrayList<>();
         if(patientId == null && status == null){
             requests = this.priorAuthRequestRepository.findAll(pageable);
         } else if(patientId == null) {
             requests = this.priorAuthRequestRepository.findByStatus(status, pageable);
         } else if(status == null) {
             requests = this.priorAuthRequestRepository.findByPatientId(patientId, pageable);
+        } else {
+            requests = this.priorAuthRequestRepository.findByPatientIdAndStatus(patientId, status, pageable);
         }
-        requests = this.priorAuthRequestRepository.findByPatientIdAndStatus(patientId, status, pageable);
 
         List<PriorAuthRequestItem> requestItems = requests.stream().map(item -> new PriorAuthRequestItem(
+                item.getId(),
                 item.getPatientId(),
                 item.getProviderId(),
                 item.getOrganizationId(),
