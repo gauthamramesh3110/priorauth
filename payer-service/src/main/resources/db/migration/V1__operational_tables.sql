@@ -19,7 +19,7 @@ CREATE TABLE processed_event (
 -- ---------------------------------------------------------------------------
 -- prior_auth_review
 --
--- One row per request the payer has seen. The primary key is the request ID
+-- One row per authRequest the payer has seen. The primary key is the authRequest ID
 -- minted by the Provider Service, so both services agree on identity without a
 -- shared sequence.
 --

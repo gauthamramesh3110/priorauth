@@ -23,3 +23,6 @@ server:
 logging:
   level:
     org.flywaydb: INFO
+
+payer:
+  base-url: http://localhost:8082

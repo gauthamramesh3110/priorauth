@@ -28,13 +28,13 @@ Replace the schema's nullable reason_code with nullable text reason. Replace rea
 
 ### 04 Provider Service
 
-Replace reason_code in the future request schema and reasonCode in POST /api/v1/requests with reason. Store the optional narrative unchanged. Remove the condition-membership validation REASON_CODE_NOT_ON_PATIENT. The patient-conditions endpoint provides clinical history rather than a required reason-code selection. Appeals copy the parent's reason.
+Replace reason_code in the future authRequest schema and reasonCode in POST /api/v1/requests with reason. Store the optional narrative unchanged. Remove the condition-membership validation REASON_CODE_NOT_ON_PATIENT. The patient-conditions endpoint provides clinical history rather than a required reason-code selection. Appeals copy the parent's reason.
 
 ### 05 Kafka Contracts
 
 RequestSubmitted carries optional reason (string or null) instead of reasonCode. The payer copies it unchanged into PriorAuthReview. Intake-result reason, escalationReason, and decisionReason keep their existing meanings.
 
-The provider service and Kafka request handlers do not yet exist in this checkout; these are contracts for their later implementation, not completed runtime paths.
+The provider service and Kafka authRequest handlers do not yet exist in this checkout; these are contracts for their later implementation, not completed runtime paths.
 
 ## Verification
 

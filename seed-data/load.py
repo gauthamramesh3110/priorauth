@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
 """
-Seed pass 3: load the working set into payer_db.
+Seed pass 3: load the working set into payer_db and provider_db independently.
 
 Reads the filtered CSVs produced by filter_synthea.py and inserts them into the
-Payer Service's reference tables. Nothing here writes to prior_auth_review or
-the curated configuration tables: those are application state and hand-authored
-content respectively.
+services' reference tables and loads the hand-authored curated configuration.
+Operational requests, reviews, notifications and processed events are preserved.
 
 This is deliberately a separate artifact from either service. Neither service
-should own the other's seed data, and in PA-26 the same loader gains a second
-target database.
+should own the other's seed data. Each target commits its own transaction.
 
 Usage:
     python load.py --dry-run      # map and validate, no database needed
-    python load.py                # truncate and load
+    python load.py                # load both databases
+    python load.py --target provider  # load only provider_db
 
 Environment:
     PAYER_DB_URL   default postgresql://payer:payer@localhost:5434/payer_db
+    PROVIDER_DB_URL default postgresql://provider:provider@localhost:5433/provider_db
 """
 
 from __future__ import annotations
@@ -38,6 +38,7 @@ CODES_WITHOUT_CRITERION = {("US", "IMAGING")}
 WORKING_SET = Path(__file__).parent / "working-set"
 
 DEFAULT_DB_URL = "postgresql://payer:payer@localhost:5434/payer_db"
+DEFAULT_PROVIDER_DB_URL = "postgresql://provider:provider@localhost:5433/provider_db"
 
 # Truncated together, in one statement, so foreign keys never block the reset.
 #
@@ -201,7 +202,7 @@ def map_network_participation(rows):
     if not in_network or not out_network:
         raise ValueError("both buckets must be non-empty, or a rejection path is dead")
 
-    # The OUT_OF_NETWORK rejection is only reachable if a request can name a
+    # The OUT_OF_NETWORK rejection is only reachable if a authRequest can name a
     # provider at an out-of-network organization. Assert it here rather than
     # discovering it as an untestable path in PA-15.
     providers = read_csv("providers.csv")
@@ -446,10 +447,53 @@ LOADERS = [
     ),
 ]
 
-def prepare() -> list[tuple[str, str, list[tuple]]]:
+# Provider tables contain only the columns needed by that service. Reuse the
+# same CSV mappings, projecting their shared fields, rather than reading payer_db.
+# Upserts preserve foreign keys from existing requests during repeat seed runs.
+PROVIDER_LOADERS = [
+    (
+        "patient_ref", "patients.csv",
+        "INSERT INTO patient_ref (id, first_name, last_name, birthdate)"
+        " VALUES (%s, %s, %s, %s) ON CONFLICT (id) DO UPDATE SET"
+        " first_name = EXCLUDED.first_name, last_name = EXCLUDED.last_name,"
+        " birthdate = EXCLUDED.birthdate",
+        lambda rows: [r[:4] for r in map_patient_ref(rows)], read_csv,
+    ),
+    (
+        "organization_ref", "organizations.csv",
+        "INSERT INTO organization_ref (id, name) VALUES (%s, %s)"
+        " ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name",
+        lambda rows: [r[:2] for r in map_organization_ref(rows)], read_csv,
+    ),
+    (
+        "provider_ref", "providers.csv",
+        "INSERT INTO provider_ref (id, organization_id, name, specialty)"
+        " VALUES (%s, %s, %s, %s) ON CONFLICT (id) DO UPDATE SET"
+        " organization_id = EXCLUDED.organization_id, name = EXCLUDED.name,"
+        " specialty = EXCLUDED.specialty",
+        map_provider_ref, read_csv,
+    ),
+    (
+        "prior_auth_eligible_code", "eligible_codes.csv",
+        "INSERT INTO prior_auth_eligible_code (code, code_type, description)"
+        " VALUES (%s, %s, %s) ON CONFLICT (code, code_type) DO UPDATE SET"
+        " description = EXCLUDED.description",
+        lambda rows: [r[:3] for r in map_eligible_code(rows)], read_curated,
+    ),
+    (
+        "patient_condition", "conditions.csv",
+        "INSERT INTO patient_condition"
+        " (patient_id, encounter_id, code, description, onset_date, resolved_date)"
+        " VALUES (%s, %s, %s, %s, %s, %s)",
+        map_patient_condition, read_csv,
+    ),
+]
+
+
+def prepare(loaders=LOADERS) -> list[tuple[str, str, list[tuple]]]:
     """Read and map every loader's source, before touching the database."""
     prepared = []
-    for table, source, insert, mapper, reader in LOADERS:
+    for table, source, insert, mapper, reader in loaders:
         rows = reader(source)
         try:
             values = mapper(rows)
@@ -462,7 +506,7 @@ def prepare() -> list[tuple[str, str, list[tuple]]]:
     return prepared
 
 
-def load(db_url: str, prepared) -> int:
+def load(db_url: str, prepared, *, truncate=True, replace_conditions=False) -> int:
     try:
         import psycopg
     except ImportError:
@@ -473,9 +517,14 @@ def load(db_url: str, prepared) -> int:
     # services may be running against it.
     with psycopg.connect(db_url) as conn:
         with conn.cursor() as cur:
-            cur.execute(
-                f"TRUNCATE {', '.join(TRUNCATE_TABLES)} RESTART IDENTITY"
-            )
+            if truncate:
+                cur.execute(
+                    f"TRUNCATE {', '.join(TRUNCATE_TABLES)} RESTART IDENTITY"
+                )
+            if replace_conditions:
+                # Only this unreferenced cache is replaced. Operational state and
+                # the patient/provider reference rows keep their existing keys.
+                cur.execute("DELETE FROM patient_condition")
             for table, insert, values in prepared:
                 cur.executemany(insert, values)
 
@@ -494,6 +543,8 @@ def load(db_url: str, prepared) -> int:
                 print("\nLOAD FAILED, rolled back:")
                 for f in failures:
                     print(f"  - {f}")
+                if not truncate:
+                    print("Provider reference rows outside the working set require manual reconciliation; nothing was deleted.")
                 return 1
 
         conn.commit()
@@ -508,6 +559,15 @@ def main() -> int:
         help="read and map the CSVs without connecting to a database",
     )
     parser.add_argument(
+        "--target", choices=("payer", "provider", "both"), default="both",
+        help="database(s) to load, each in an independent transaction",
+    )
+    parser.add_argument(
+        "--provider-db-url",
+        default=os.environ.get("PROVIDER_DB_URL", DEFAULT_PROVIDER_DB_URL),
+        help="provider_db connection string",
+    )
+    parser.add_argument(
         "--db-url",
         default=os.environ.get("PAYER_DB_URL", DEFAULT_DB_URL),
         help="payer_db connection string",
@@ -516,14 +576,24 @@ def main() -> int:
 
     print(f"source: {WORKING_SET}")
     print()
-    prepared = prepare()
+    targets = []
+    if args.target in ("payer", "both"):
+        print("payer:")
+        targets.append(("payer", args.db_url, prepare(), True))
+    if args.target in ("provider", "both"):
+        print("provider:")
+        targets.append(("provider", args.provider_db_url, prepare(PROVIDER_LOADERS), False))
 
     if args.dry_run:
         print("\ndry run: nothing written")
         return 0
 
-    print(f"\ntarget: {args.db_url.rsplit('@', 1)[-1]}")
-    return load(args.db_url, prepared)
+    for name, db_url, prepared, truncate in targets:
+        print(f"\ntarget: {name}")
+        if load(db_url, prepared, truncate=truncate, replace_conditions=name == "provider"):
+            return 1
+        print(f"{name}: committed")
+    return 0
 
 
 if __name__ == "__main__":

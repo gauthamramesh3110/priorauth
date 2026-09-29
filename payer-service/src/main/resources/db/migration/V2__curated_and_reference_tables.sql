@@ -113,7 +113,7 @@ CREATE TABLE network_participation (
        CONSTRAINT fk_network_organization FOREIGN KEY (organization_id) REFERENCES organization_ref (id)
 );
 
--- Which codes require prior authorization at all. A request for a code absent
+-- Which codes require prior authorization at all. A authRequest for a code absent
 -- from this table is a client error, not a denial.
 CREATE TABLE prior_auth_eligible_code (
       code         VARCHAR(32)    NOT NULL,

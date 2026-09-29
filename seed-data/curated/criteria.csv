@@ -16,5 +16,5 @@ code,code_type,criterion_description,required_condition_code,auto_approve_if_met
 1599803,MEDICATION,Approve when Alzheimer's disease is documented.,26929004,true,365
 866414,MEDICATION,Approve when chronic congestive heart failure is documented.,88805009,true,365
 1719286,MEDICATION,Approve when chronic congestive heart failure is documented.,88805009,true,180
-2001499,MEDICATION,High aggregate spend with no single supporting diagnosis. Every request is reviewed.,,false,90
+2001499,MEDICATION,High aggregate spend with no single supporting diagnosis. Every authRequest is reviewed.,,false,90
 CT,IMAGING,Computed tomography covers too many indications for a single rule. A reviewer confirms the body site and indication.,,false,30

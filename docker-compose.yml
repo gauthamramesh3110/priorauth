@@ -38,8 +38,11 @@ services:
       - ./seed-data/working-set:/seed/working-set:ro
     environment:
       PAYER_DB_URL: postgresql://payer:payer@payer-postgres:5432/payer_db
+      PROVIDER_DB_URL: postgresql://provider:provider@provider-postgres:5432/provider_db
     depends_on:
       payer-postgres:
+        condition: service_healthy
+      provider-postgres:
         condition: service_healthy
     restart: "no"
 volumes:

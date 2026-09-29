@@ -1,6 +1,6 @@
 # Prior Authorization System: project guidance and state
 
-Consolidated at the user's request on 2026-09-26. This file replaces the original
+Consolidated at the user's authRequest on 2026-09-26. This file replaces the original
 2026-09-16 handoff. Stable guidance is below; dated snapshots are evidence of past
 state, not a substitute for checking current source, tests, or Notion.
 
@@ -35,7 +35,7 @@ state, not a substitute for checking current source, tests, or Notion.
 - Each Kafka consumer must check processed_event in the same transaction as its
   state change. Transport wiring and persistence must be verified independently
   from entity/schema presence.
-- IDs follow the schema: reference/request UUIDs, but Coverage, PatientCondition,
+- IDs follow the schema: reference/authRequest UUIDs, but Coverage, PatientCondition,
   and PriorAuthCriteria use Long for BIGSERIAL. Composite keys use embedded IDs.
 - TIMESTAMPTZ maps to Instant; DATE maps to LocalDate. Use UTC deliberately when
   converting timestamps to dates. Inject Clock for rules that depend on today.
@@ -81,7 +81,7 @@ as part of this consolidation.
 - Historical completion: PA-01 through PA-07 and PA-09 through PA-12 were Done at
   the original handoff. PA-08 was deliberately dropped as unnecessary orchestration.
 - PA-13 entities/repositories were completed, and Notion was explicitly updated to
-  Done / Approved with both review checkboxes checked at the user's request.
+  Done / Approved with both review checkboxes checked at the user's authRequest.
 - PA-14 IntakeValidationService is implemented with Clock injection. Its source
   review passed after correcting provider/organization lookup and date boundaries.
 - PA-15 IntakeValidationServiceTest exists, including a NOT_COVERED test added
@@ -99,7 +99,7 @@ as part of this consolidation.
 - PA-16 was last fetched as In progress. Its successful tests have not themselves
   authorized or performed a Done/status update.
 - Reference repositories are narrow lookup interfaces. PriorAuthReviewRepository
-  currently exposes lookup; do not claim end-to-end request persistence based only
+  currently exposes lookup; do not claim end-to-end authRequest persistence based only
   on its entity or migration. Verify actual save/orchestration paths when needed.
 - Future interest: reviewer UI, then LLM assistance, RAG over synthetic policy
   documents, and MCP tools. This is a direction discussed, not implemented scope.

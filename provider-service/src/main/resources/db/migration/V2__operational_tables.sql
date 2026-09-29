@@ -40,7 +40,7 @@ CREATE TABLE prior_auth_request (
         FOREIGN KEY (appeal_of) REFERENCES prior_auth_request (id)
 );
 
--- Appeals create a new row linked to the original denied request.
+-- Appeals create a new row linked to the original denied authRequest.
 CREATE INDEX idx_request_patient_status ON prior_auth_request (patient_id, status);
 CREATE INDEX idx_request_status ON prior_auth_request (status);
 CREATE INDEX idx_request_appeal_of ON prior_auth_request (appeal_of);
